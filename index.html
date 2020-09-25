@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        /* RESET RULES 
+–––––––––––––––––––––––––––––––––––––––––––––––––– */
+        :root {
+            --lightgray: #efefef;
+            --blue: steelblue;
+            --white: #fff;
+            --black: rgba(0, 0, 0, 0.8);
+            --bounceEasing: cubic-bezier(0.51, 0.92, 0.24, 1.15);
+        }
+
+        * {
+            padding: 0;
+            margin: 0;
+        }
+
+        a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        button {
+            cursor: pointer;
+            background: transparent;
+            border: none;
+            outline: none;
+            font-size: inherit;
+        }
+
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            font: 16px/1.5 sans-serif;
+        }
+
+        /* .btn-group {
+            text-align: center;
+        } */
+
+        .open-modal {
+            font-weight: bold;
+            background: var(--blue);
+            color: var(--white);
+            padding: 0.75rem 1.75rem;
+            margin-bottom: 1rem;
+            border-radius: 5px;
+        }
+
+
+        /* MODAL
+–––––––––––––––––––––––––––––––––––––––––––––––––– */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            background: var(--black);
+            cursor: pointer;
+            visibility: hidden;
+            opacity: 0;
+            transition: all 0.35s ease-in;
+        }
+
+        .modal.is-visible {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .modal-dialog {
+            position: relative;
+            max-width: 800px;
+            max-height: 90vh;
+            border-radius: 5px;
+            background: var(--white);
+            overflow: auto;
+            cursor: default;
+        }
+
+        .modal-dialog>* {
+            padding: 1rem;
+        }
+
+        .modal-header,
+        .modal-footer {
+            background: var(--lightgray);
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .modal-header .close-modal {
+            font-size: 1.5rem;
+        }
+
+        .modal p+p {
+            margin-top: 1rem;
+        }
+
+
+        /* ANIMATIONS
+–––––––––––––––––––––––––––––––––––––––––––––––––– */
+        [data-animation] .modal-dialog {
+            opacity: 0;
+            transition: all 0.5s var(--bounceEasing);
+        }
+
+        [data-animation].is-visible .modal-dialog {
+            opacity: 1;
+            transition-delay: 0.2s;
+        }
+
+        [data-animation="slideInOutDown"] .modal-dialog {
+            transform: translateY(100%);
+        }
+
+        [data-animation="slideInOutTop"] .modal-dialog {
+            transform: translateY(-100%);
+        }
+
+        [data-animation="slideInOutLeft"] .modal-dialog {
+            transform: translateX(-100%);
+        }
+
+        [data-animation="slideInOutRight"] .modal-dialog {
+            transform: translateX(100%);
+        }
+
+        [data-animation="zoomInOut"] .modal-dialog {
+            transform: scale(0.2);
+        }
+
+        [data-animation="rotateInOutDown"] .modal-dialog {
+            transform-origin: top left;
+            transform: rotate(-1turn);
+        }
+
+        [data-animation="slideInOutDown"].is-visible .modal-dialog,
+        [data-animation="slideInOutTop"].is-visible .modal-dialog,
+        [data-animation="slideInOutLeft"].is-visible .modal-dialog,
+        [data-animation="slideInOutRight"].is-visible .modal-dialog,
+        [data-animation="zoomInOut"].is-visible .modal-dialog,
+        [data-animation="rotateInOutDown"].is-visible .modal-dialog {
+            transform: none;
+        }
+
+        /* PDF CANVAS   
+–––––––––––––––––––––––––––––––––––––––––––––––––– */
+
+        #canvas_container {
+            width: 750px;
+            height: 450px;
+            overflow: auto;
+            background: #333;
+            text-align: center;
+            border: solid 3px;
+
+        }
+    </style>
+</head>
+
+<body>
+    <div class="btn-group">
+        <button type="button" class="open-modal" data-open="modal1">
+            Launch first modal with a slide animation
+        </button>
+    </div>
+
+    <div class="modal" id="modal1" data-animation="slideInOutLeft">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <div id="navigation_controls">
+                    <button id="go_previous">Previous</button>
+                    <input id="current_page" value="1" type="number" />
+                    <button id="go_next">Next</button>
+                </div>
+                <button class="close-modal" aria-label="close modal" data-close>
+                    ✕
+                </button>
+            </div>
+            <section class="modal-content">
+
+                <div id="canvas_container">
+                    <canvas id="pdf_renderer"></canvas>
+                </div>
+            </section>
+            <footer class="modal-footer">
+                <div id="zoom_controls">
+                    <button id="zoom_in">+</button>
+                    <button id="zoom_out">-</button>
+                </div>
+            </footer>
+        </div>
+    </div>
+
+
+</body>
+
+<script>
+    // FOR JS DATA MODAL
+    const openEls = document.querySelectorAll("[data-open]");
+    const closeEls = document.querySelectorAll("[data-close]");
+    const isVisible = "is-visible";
+
+    for (const el of openEls) {
+        el.addEventListener("click", function () {
+            const modalId = this.dataset.open;
+            document.getElementById(modalId).classList.add(isVisible);
+        });
+    }
+
+    for (const el of closeEls) {
+        el.addEventListener("click", function () {
+            this.parentElement.parentElement.parentElement.classList.remove(isVisible);
+        });
+    }
+
+    document.addEventListener("click", e => {
+        if (e.target == document.querySelector(".modal.is-visible")) {
+            document.querySelector(".modal.is-visible").classList.remove(isVisible);
+        }
+    });
+
+    document.addEventListener("keyup", e => {
+        // if we press the ESC
+        if (e.key == "Escape" && document.querySelector(".modal.is-visible")) {
+            document.querySelector(".modal.is-visible").classList.remove(isVisible);
+        }
+        // if we press the ArrowRight
+        if (e.key == "ArrowRight" && document.querySelector(".modal.is-visible")) {
+            document.querySelector("#go_next").click();
+        }
+        // if we press the ArrowLeft
+        if (e.key == "ArrowLeft" && document.querySelector(".modal.is-visible")) {
+            document.querySelector("#go_previous").click();
+        }
+    });
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.0.943/pdf.min.js">
+</script>
+<script>
+    // FOR PDF VIEWER
+    var myState = {
+        pdf: null,
+        currentPage: 1,
+        zoom: 1
+    }
+    // more code here
+    pdfjsLib.getDocument('./Javascript-Cheat-Sheet.pdf').then((pdf) => {
+        // more code here
+        myState.pdf = pdf;
+        render();
+    });
+
+    function render() {
+        myState.pdf.getPage(myState.currentPage).then((page) => {
+
+            // more code here
+            var canvas = document.getElementById("pdf_renderer");
+            var ctx = canvas.getContext('2d');
+
+            var viewport = page.getViewport(myState.zoom);
+
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+
+            page.render({
+                canvasContext: ctx,
+                viewport: viewport
+            });
+
+        });
+    }
+
+    document.getElementById('go_previous')
+        .addEventListener('click', (e) => {
+            if (myState.pdf == null ||
+                myState.currentPage == 1) return;
+            myState.currentPage -= 1;
+            document.getElementById("current_page")
+                .value = myState.currentPage;
+            render();
+        });
+
+    document.getElementById('go_next')
+        .addEventListener('click', (e) => {
+            if (myState.pdf == null ||
+                myState.currentPage > myState.pdf
+                ._pdfInfo.numPages)
+                return;
+
+            myState.currentPage += 1;
+            document.getElementById("current_page")
+                .value = myState.currentPage;
+            render();
+        });
+
+    document.getElementById('current_page')
+        .addEventListener('keypress', (e) => {
+            if (myState.pdf == null) return;
+
+            // Get key code
+            var code = (e.keyCode ? e.keyCode : e.which);
+
+            // If key code matches that of the Enter key
+            if (code == 13) {
+                var desiredPage =
+                    document.getElementById('current_page')
+                    .valueAsNumber;
+
+                if (desiredPage >= 1 &&
+                    desiredPage <= myState.pdf
+                    ._pdfInfo.numPages) {
+                    myState.currentPage = desiredPage;
+                    document.getElementById("current_page")
+                        .value = desiredPage;
+                    render();
+                }
+            }
+        });
+
+    document.getElementById('zoom_in')
+        .addEventListener('click', (e) => {
+            if (myState.pdf == null) return;
+            myState.zoom += 0.5;
+            render();
+        });
+
+    document.getElementById('zoom_out')
+        .addEventListener('click', (e) => {
+            if (myState.pdf == null) return;
+            myState.zoom -= 0.5;
+            render();
+        });
+</script>
+
+</html>
